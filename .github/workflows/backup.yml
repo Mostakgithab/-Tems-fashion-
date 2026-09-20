@@ -49,55 +49,7 @@ jobs:
           name: tems-fashion-supabase-backup
           path: backups/
           retention-days: 30
-                - name: Upload backup to Google Drive
-        env:
-          GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
-          GOOGLE_DRIVE_BACKUP_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_BACKUP_FOLDER_ID }}
-        run: |
-          python -m pip install --quiet google-api-python-client google-auth
-
-          printf '%s' "$GOOGLE_SERVICE_ACCOUNT_JSON" > service-account.json
-
-          python - <<'PY'
-          import os
-          from google.oauth2 import service_account
-          from googleapiclient.discovery import build
-          from googleapiclient.http import MediaFileUpload
-
-          credentials = service_account.Credentials.from_service_account_file(
-              "service-account.json",
-              scopes=["https://www.googleapis.com/auth/drive"]
-          )
-
-          drive = build("drive", "v3", credentials=credentials)
-
-          folder_id = os.environ["GOOGLE_DRIVE_BACKUP_FOLDER_ID"]
-
-          for filename in ["roles.sql", "schema.sql", "data.sql"]:
-              path = f"backups/{filename}"
-
-              metadata = {
-                  "name": filename,
-                  "parents": [folder_id]
-              }
-
-              media = MediaFileUpload(
-                  path,
-                  mimetype="application/sql",
-                  resumable=True
-              )
-
-              result = drive.files().create(
-                  body=metadata,
-                  media_body=media,
-                  fields="id,name"
-              ).execute()
-
-              print(f"Uploaded {result['name']} - {result['id']}")
-          PY
-
-          rm -f service-account.json
-      - name: Upload backup to Google Drive
+ name: Upload backup to Google Drive
         env:
           GOOGLE_SERVICE_ACCOUNT_JSON: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_JSON }}
           GOOGLE_DRIVE_BACKUP_FOLDER_ID: ${{ secrets.GOOGLE_DRIVE_BACKUP_FOLDER_ID }}
