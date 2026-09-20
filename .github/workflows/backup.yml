@@ -3,6 +3,9 @@ name: Tems Fashion Supabase Backup
 on:
   workflow_dispatch:
 
+  schedule:
+    - cron: '30 18 * * *'
+
 jobs:
   backup:
     runs-on: ubuntu-latest
@@ -11,22 +14,6 @@ jobs:
       SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
 
     steps:
-      - name: Check database connection type
-        shell: bash
-        run: |
-          python - <<'PY'
-          import os
-          from urllib.parse import urlparse
-
-          url = os.environ.get("SUPABASE_DB_URL", "")
-          p = urlparse(url)
-
-          print("Database host:", p.hostname)
-          print("Database port:", p.port)
-          print("Pooler:", "pooler.supabase.com" in (p.hostname or ""))
-          print("Password present:", bool(p.password))
-          PY
-
       - name: Setup Supabase CLI
         uses: supabase/setup-cli@v1
         with:
