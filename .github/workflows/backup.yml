@@ -1,1 +1,29 @@
+name: supabase-backup-to-r2
 
+on: { schedule: [{ cron: "0 20 * * *" }], workflow_dispatch: {} }
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    env:
+      SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: auto
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+    steps:
+      - uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Dump database
+        run: |
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f roles.sql --role-only
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f schema.sql
+          supabase db dump --db-url "$SUPABASE_DB_URL" -f data.sql --data-only --use-copy
+          tar czf backup-$(date +%F).tar.gz roles.sql schema.sql data.sql
+
+      - name: Upload to R2
+        run: |
+          aws s3 cp backup-*.tar.gz s3://${{ secrets.R2_BUCKET }}/supabase/ \
+            --endpoint-url "$R2_ENDPOINT"
