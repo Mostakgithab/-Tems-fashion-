@@ -49,4 +49,36 @@ jobs:
           name: tems-fashion-supabase-backup
           path: backups/
           retention-days: 30
-    
+          - name: Upload backup to Cloudflare R2
+        env:
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+        run: |
+          python -m pip install --quiet boto3
+
+          python - <<'PY'
+          import os
+          import boto3
+
+          s3 = boto3.client(
+              "s3",
+              endpoint_url=os.environ["R2_ENDPOINT"],
+              aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
+              aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
+              region_name="auto"
+          )
+
+          bucket = "supabase-tems-fashion-back-up"
+
+          for filename in ["roles.sql", "schema.sql", "data.sql"]:
+              path = f"backups/{filename}"
+
+              s3.upload_file(
+                  path,
+                  bucket,
+                  filename
+              )
+
+              print(f"Uploaded to R2: {filename}")
+          PY
