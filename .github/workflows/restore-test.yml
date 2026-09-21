@@ -1,0 +1,96 @@
+name: Tems Fashion R2 Restore Test
+
+on:
+  workflow_dispatch:
+
+jobs:
+  restore-test:
+    runs-on: ubuntu-latest
+
+    env:
+      RESTORE_TEST_DB_URL: ${{ secrets.RESTORE_TEST_DB_URL }}
+      R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+      R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+      R2_ENDPOINT: ${{ secrets.R2_ENDPOINT }}
+
+    steps:
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+
+      - name: Download backup from Cloudflare R2
+        run: |
+          python -m pip install --quiet boto3
+
+          python - <<'PY'
+          import os
+          import boto3
+
+          s3 = boto3.client(
+              "s3",
+              endpoint_url=os.environ["R2_ENDPOINT"],
+              aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"],
+              aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"],
+              region_name="auto"
+          )
+
+          bucket = "supabase-tems-fashion-back-up"
+
+          for filename in ["roles.sql", "schema.sql", "data.sql"]:
+              s3.download_file(
+                  bucket,
+                  filename,
+                  filename
+              )
+              print(f"Downloaded from R2: {filename}")
+          PY
+
+      - name: Verify backup files
+        run: |
+          ls -lh roles.sql schema.sql data.sql
+
+      - name: Restore data to Test Supabase
+        run: |
+          psql "$RESTORE_TEST_DB_URL" \
+            --set ON_ERROR_STOP=1 \
+            --file data.sql
+
+      - name: Verify restored data
+        run: |
+          psql "$RESTORE_TEST_DB_URL" \
+            --set ON_ERROR_STOP=1 \
+            --command "
+              SELECT
+                'products' AS table_name,
+                count(*) AS row_count
+              FROM public.products
+
+              UNION ALL
+
+              SELECT
+                'orders',
+                count(*)
+              FROM public.orders
+
+              UNION ALL
+
+              SELECT
+                'order_items',
+                count(*)
+              FROM public.order_items
+
+              UNION ALL
+
+              SELECT
+                'profiles',
+                count(*)
+              FROM public.profiles
+
+              UNION ALL
+
+              SELECT
+                'auth.users',
+                count(*)
+              FROM auth.users;
+            "
