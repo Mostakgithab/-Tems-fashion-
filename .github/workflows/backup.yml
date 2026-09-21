@@ -41,7 +41,7 @@ jobs:
             --db-url "$SUPABASE_DB_URL" \
             -f backups/data.sql \
             --data-only \
-            --use-copy
+            
 
       - name: Upload backup to GitHub Cloud
         uses: actions/upload-artifact@v4
