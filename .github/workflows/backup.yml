@@ -40,8 +40,7 @@ jobs:
           supabase db dump \
             --db-url "$SUPABASE_DB_URL" \
             -f backups/data.sql \
-            --data-only \
-            
+            --data-only
 
       - name: Upload backup to GitHub Cloud
         uses: actions/upload-artifact@v4
@@ -49,7 +48,8 @@ jobs:
           name: tems-fashion-supabase-backup
           path: backups/
           retention-days: 30
-          - name: Upload backup to Cloudflare R2
+
+      - name: Upload backup to Cloudflare R2
         env:
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
